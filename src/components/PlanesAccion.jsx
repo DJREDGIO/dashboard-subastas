@@ -216,9 +216,29 @@ const PlanesAccion = ({ data }) => {
 
         filtered.forEach(row => {
             const company = row[companyCol] || "SIN EMPRESA";
-            const val = parseMoney(row[valueCol]);
-            const cat = row[catCol] || "OTROS";
-            const subcat = row[subcatCol] || "OTROS";
+            // Valid Whitelists
+            const VALID_CATEGORIES = [
+                "Chatarra y Materiales", "Equipos", "Inmuebles", "Maquinaria",
+                "Otros", "Vehículos", "n/d", "Pendiente"
+            ];
+            const VALID_SUBCATEGORIES = [
+                "Eléctricos y Electrónicos", "Equipos", "Ferrosa", "Industrial", "Mixtos",
+                "Mobiliario", "Motores", "n/a", "n/d", "No Ferrosa", "Otros Materiales",
+                "Pendiente", "Promocional", "Puesta en pie", "Salvamentos",
+                "Unidad de suelo", "Usados", "Vehículos"
+            ];
+
+            let cat = row[catCol] || "OTROS";
+            let subcat = row[subcatCol] || "OTROS";
+
+            // Normalize and Validate Category
+            const catMatch = VALID_CATEGORIES.find(c => c.toLowerCase() === String(cat).trim().toLowerCase());
+            cat = catMatch ? catMatch : "Otros";
+
+            // Normalize and Validate Subcategory
+            const subcatMatch = VALID_SUBCATEGORIES.find(s => s.toLowerCase() === String(subcat).trim().toLowerCase());
+            subcat = subcatMatch ? subcatMatch : "Otros";
+
             const tipo = row[typeCol] || "N/D";
             const mod = row[modCol] || "N/D";
             const procId = row[processCol];
