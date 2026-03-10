@@ -1,0 +1,117 @@
+body {
+  margin: 0;
+  font-family: 'Roboto', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #F5F5F5;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: 'Roboto', sans-serif;
+  font-weight: 700;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #E5E5E5;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #606060;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #03AB90;
+}
+
+/* Print Styles */
+.print-only {
+  display: none !important;
+}
+
+@media print {
+  @page {
+    size: Letter portrait;
+    /* Carta Vertical */
+    margin: 0.5cm;
+  }
+
+  * {
+    font-family: 'Roboto', sans-serif !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .print-only {
+    display: flex !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  /* Hide strict UI elements */
+  button,
+  .filter-section,
+  input,
+  select {
+    display: none !important;
+  }
+
+  /* Reset Layout & Compact for 2 Pages */
+  body,
+  #root,
+  .app-wrapper,
+  .print-container,
+  .print-content {
+    height: auto !important;
+    overflow: visible !important;
+    background: white !important;
+    display: block !important;
+    font-family: 'Roboto', sans-serif !important;
+    zoom: 0.90;
+    /* Shrink to fit 2 pages (now optimizing for 1 via spacing) */
+  }
+
+  /* Reduce spacing between elements in print */
+  .chart-container,
+  div[style*="marginBottom: '32px'"],
+  div[style*="margin-bottom: 32px"] {
+    margin-bottom: 10px !important;
+    break-inside: avoid;
+  }
+
+  /* Graph and Component readability & Page Breaks */
+  .recharts-responsive-container,
+  canvas,
+  .kpi-card,
+  .chart-container {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Ensure graphs take full width */
+  div[class*="recharts-wrapper"] {
+    width: 100% !important;
+  }
+}
