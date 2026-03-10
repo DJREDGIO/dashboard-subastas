@@ -216,6 +216,8 @@ const PlanesAccion = ({ data }) => {
 
         filtered.forEach(row => {
             const company = row[companyCol] || "SIN EMPRESA";
+            const val = parseMoney(row[valueCol]);
+
             // Valid Whitelists
             const VALID_CATEGORIES = [
                 "Chatarra y Materiales", "Equipos", "Inmuebles", "Maquinaria",
