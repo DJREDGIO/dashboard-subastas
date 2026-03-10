@@ -46,9 +46,9 @@ function MultiSelectFilter({ label, selectedValues, onChange, options }) {
                 }}
             >
                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '85%' }}>
-                    {currentSelection.length === 0 ? 'Todas las empresas' :
-                        currentSelection.length === options.length ? 'Todas seleccionadas' :
-                            `${currentSelection.length} seleccionada(s)`}
+                    {currentSelection.length === 0 ? 'Todos' :
+                        currentSelection.length === options.length ? 'Todos seleccionados' :
+                            `${currentSelection.length} seleccionado(s)`}
                 </span>
                 <ChevronDown size={14} style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', color: COLORS.text.secondary }} />
             </button>
@@ -111,6 +111,7 @@ function MultiSelectFilter({ label, selectedValues, onChange, options }) {
 const ValuationTracking = ({ data }) => {
     const [dateRange, setDateRange] = useState({ start: '', end: '' });
     const [selectedCompanies, setSelectedCompanies] = useState([]);
+    const [selectedEstadoTecnico, setSelectedEstadoTecnico] = useState([]);
 
     // Extract Unique Companies for Filter
     const companyOptions = useMemo(() => {
@@ -118,6 +119,14 @@ const ValuationTracking = ({ data }) => {
         const col = findColumn(data[0], ["EMPRESA VENDEDORA", "EMPRESA"]);
         if (!col) return [];
         return [...new Set(data.map(row => row[col]).filter(Boolean))].sort();
+    }, [data]);
+
+    // Extract Unique Estado Técnico for Filter
+    const estadoTecnicoOptions = useMemo(() => {
+        if (!data || data.length === 0) return [];
+        const col = findColumn(data[0], ["ESTADO TECNICO", "ESTADO_TECNICO"]);
+        if (!col) return [];
+        return [...new Set(data.map(row => row[col]).filter(Boolean).map(v => String(v).trim()))].sort();
     }, [data]);
 
     // 1. Filter and Process Data
@@ -133,6 +142,7 @@ const ValuationTracking = ({ data }) => {
         const bienCol = findColumn(data[0], ["BIENES", "BIEN", "ACTIVO", "DESCRIPCION"]);
         const ubicacionCol = findColumn(data[0], ["UBICACION", "CIUDAD", "DEPARTAMENTO", "MUNICIPIO"]);
         const categoriaCol = findColumn(data[0], ["CATEGORIA", "LINEA", "FAMILIA"]);
+        const estadoTecCol = findColumn(data[0], ["ESTADO TECNICO", "ESTADO_TECNICO"]);
 
         if (!publicacionCol || !procesoCol) return [];
 
@@ -142,9 +152,13 @@ const ValuationTracking = ({ data }) => {
         data.forEach(row => {
             const estadoPub = normalizeString(row[publicacionCol]);
             const empresaName = row[empresaCol];
+            const estadoTec = estadoTecCol ? String(row[estadoTecCol] || '').trim() : '';
 
             // Filter: Company Selection
             if (selectedCompanies.length > 0 && !selectedCompanies.includes(empresaName)) return;
+
+            // Filter: Estado Técnico Selection
+            if (selectedEstadoTecnico.length > 0 && !selectedEstadoTecnico.includes(estadoTec)) return;
 
             // Filter: Exclude explicitly PUBLISHED items.
             if (estadoPub.includes("publicado") && !estadoPub.includes("no publicado")) return;
@@ -174,7 +188,8 @@ const ValuationTracking = ({ data }) => {
                     status: 'En Revisión',
                     daysPending: daysPending,
                     ubicacion: row[ubicacionCol] || "N/D",
-                    categoria: row[categoriaCol] || "Varios"
+                    categoria: row[categoriaCol] || "Varios",
+                    estadoTecnico: estadoTec || "N/D"
                 };
             }
 
@@ -189,7 +204,7 @@ const ValuationTracking = ({ data }) => {
 
         // Convert to array and sort by Days Pending (Desc) -> Most critical first
         return Object.values(groups).sort((a, b) => b.daysPending - a.daysPending);
-    }, [data, dateRange, selectedCompanies]);
+    }, [data, dateRange, selectedCompanies, selectedEstadoTecnico]);
 
     // Metrics for Header
     const totalPendingValue = trackedProcesses.reduce((acc, curr) => acc + curr.valorTotal, 0);
@@ -343,6 +358,16 @@ const ValuationTracking = ({ data }) => {
                         options={companyOptions}
                         selectedValues={selectedCompanies}
                         onChange={setSelectedCompanies}
+                    />
+
+                    <div style={{ height: '30px', width: '1px', background: '#ddd' }}></div>
+
+                    {/* MultiSelect Estado Técnico Filter */}
+                    <MultiSelectFilter
+                        label="Estado Técnico"
+                        options={estadoTecnicoOptions}
+                        selectedValues={selectedEstadoTecnico}
+                        onChange={setSelectedEstadoTecnico}
                     />
 
                     <div style={{ height: '30px', width: '1px', background: '#ddd' }}></div>
