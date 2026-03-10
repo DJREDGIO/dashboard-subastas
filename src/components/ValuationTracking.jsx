@@ -121,12 +121,29 @@ const ValuationTracking = ({ data }) => {
         return [...new Set(data.map(row => row[col]).filter(Boolean))].sort();
     }, [data]);
 
+    // Valid states for Estado Técnico (whitelist to filter out dates/junk data)
+    const VALID_ESTADOS_TECNICOS = [
+        "Aprobado", "Cancelado", "En valoración", "No aprobado", "No viable",
+        "Por aprobar", "Re Publicado"
+    ];
+
     // Extract Unique Estado Técnico for Filter
     const estadoTecnicoOptions = useMemo(() => {
         if (!data || data.length === 0) return [];
         const col = findColumn(data[0], ["ESTADO TECNICO", "ESTADO_TECNICO"]);
         if (!col) return [];
-        return [...new Set(data.map(row => row[col]).filter(Boolean).map(v => String(v).trim()))].sort();
+
+        // Get unique raw values, handle casing, normalize spaces
+        const rawValues = [...new Set(data.map(row => row[col]).filter(Boolean).map(v => String(v).trim()))];
+
+        // Match against valid states (case insensitive) and return canonical casing
+        const validOptions = new Set();
+        rawValues.forEach(val => {
+            const match = VALID_ESTADOS_TECNICOS.find(valid => valid.toLowerCase() === val.toLowerCase());
+            if (match) validOptions.add(match);
+        });
+
+        return [...validOptions].sort();
     }, [data]);
 
     // 1. Filter and Process Data
