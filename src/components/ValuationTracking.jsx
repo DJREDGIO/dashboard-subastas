@@ -112,6 +112,8 @@ const ValuationTracking = ({ data }) => {
     const [dateRange, setDateRange] = useState({ start: '', end: '' });
     const [selectedCompanies, setSelectedCompanies] = useState([]);
     const [selectedEstadoTecnico, setSelectedEstadoTecnico] = useState([]);
+    const [selectedCategories, setSelectedCategories] = useState([]);
+    const [selectedSubcategories, setSelectedSubcategories] = useState([]);
 
     // Extract Unique Companies for Filter
     const companyOptions = useMemo(() => {
@@ -146,6 +148,39 @@ const ValuationTracking = ({ data }) => {
         return [...validOptions].sort();
     }, [data]);
 
+    // Extract Categories for Filter
+    const categoryOptions = useMemo(() => {
+        if (!data || data.length === 0) return [];
+        const col = findColumn(data[0], ["CATEGORÍA", "CATEGORIA"]);
+        if (!col) return [];
+        return [...new Set(data.map(row => row[col]).filter(Boolean))].sort();
+    }, [data]);
+
+    const VALID_SUBCATEGORIES = [
+        "Usados", "Salvamentos", "Industrial", "Pendiente", "Vehículos",
+        "No Ferrosa", "Ferrosa", "Eléctricos y Electrónicos", "Otros Materiales",
+        "Mobiliario", "Amarilla", "Equipos", "Blindado", "Blindados", "Mixtos",
+        "Puesta en pie", "n/a", "Promocional", "Unidad de suelo", "n/d",
+        "Edificaciones", "Cancelado", "Motores"
+    ];
+
+    // Extract Subcategories for Filter
+    const subcategoryOptions = useMemo(() => {
+        if (!data || data.length === 0) return [];
+        // Strict matching for SUBCATEGORIA to avoid matching places
+        const col = findColumn(data[0], ["SUBCATEGORÍA", "SUBCATEGORIA", "SUB CATEGORIA", "SUB CATEGORÍA"]);
+        if (!col) return [];
+
+        const rawValues = [...new Set(data.map(row => row[col]).filter(Boolean).map(v => String(v).trim()))];
+        const validOptions = new Set();
+        rawValues.forEach(val => {
+            const match = VALID_SUBCATEGORIES.find(valid => valid.toLowerCase() === val.toLowerCase());
+            if (match) validOptions.add(match);
+        });
+
+        return [...validOptions].sort();
+    }, [data]);
+
     // 1. Filter and Process Data
     const trackedProcesses = useMemo(() => {
         if (!data || data.length === 0) return [];
@@ -158,8 +193,9 @@ const ValuationTracking = ({ data }) => {
         const valorCol = findColumn(data[0], ["VALOR SUGERIDO", "PRECIO SUGERIDO"]);
         const bienCol = findColumn(data[0], ["BIENES", "BIEN", "ACTIVO", "DESCRIPCION"]);
         const ubicacionCol = findColumn(data[0], ["UBICACION", "CIUDAD", "DEPARTAMENTO", "MUNICIPIO"]);
-        const categoriaCol = findColumn(data[0], ["CATEGORIA", "LINEA", "FAMILIA"]);
+        const categoriaCol = findColumn(data[0], ["CATEGORÍA", "CATEGORIA"]);
         const estadoTecCol = findColumn(data[0], ["ESTADO TECNICO", "ESTADO_TECNICO"]);
+        const subcategoriaCol = findColumn(data[0], ["SUBCATEGORÍA", "SUBCATEGORIA", "SUB CATEGORIA", "SUB CATEGORÍA"]);
 
         if (!publicacionCol || !procesoCol) return [];
 
@@ -170,12 +206,20 @@ const ValuationTracking = ({ data }) => {
             const estadoPub = normalizeString(row[publicacionCol]);
             const empresaName = row[empresaCol];
             const estadoTec = estadoTecCol ? String(row[estadoTecCol] || '').trim() : '';
+            const cat = categoriaCol ? String(row[categoriaCol] || '').trim() : '';
+            const subcat = subcategoriaCol ? String(row[subcategoriaCol] || '').trim() : '';
 
             // Filter: Company Selection
             if (selectedCompanies.length > 0 && !selectedCompanies.includes(empresaName)) return;
 
             // Filter: Estado Técnico Selection
             if (selectedEstadoTecnico.length > 0 && !selectedEstadoTecnico.includes(estadoTec)) return;
+
+            // Filter: Categoría Selection
+            if (selectedCategories.length > 0 && !selectedCategories.includes(cat)) return;
+
+            // Filter: Subcategoría Selection
+            if (selectedSubcategories.length > 0 && !selectedSubcategories.includes(subcat)) return;
 
             // Filter: Exclude explicitly PUBLISHED items.
             if (estadoPub.includes("publicado") && !estadoPub.includes("no publicado")) return;
@@ -221,7 +265,7 @@ const ValuationTracking = ({ data }) => {
 
         // Convert to array and sort by Days Pending (Desc) -> Most critical first
         return Object.values(groups).sort((a, b) => b.daysPending - a.daysPending);
-    }, [data, dateRange, selectedCompanies, selectedEstadoTecnico]);
+    }, [data, dateRange, selectedCompanies, selectedEstadoTecnico, selectedCategories, selectedSubcategories]);
 
     // Metrics for Header
     const totalPendingValue = trackedProcesses.reduce((acc, curr) => acc + curr.valorTotal, 0);
@@ -326,6 +370,28 @@ const ValuationTracking = ({ data }) => {
                     </p>
                 </div>
 
+                {/* Summary Metrics */}
+                <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
+                    <div style={{ textAlign: 'right' }}>
+                        <p style={{ margin: 0, fontSize: '12px', color: COLORS.text.secondary }}>Total Pendiente</p>
+                        <p style={{ margin: 0, fontSize: '20px', fontWeight: 'bold', color: COLORS.accent }}>
+                            $ {new Intl.NumberFormat('es-CO', { notation: "compact", compactDisplay: "short" }).format(totalPendingValue)}
+                        </p>
+                    </div>
+                    <div style={{ textAlign: 'right', borderLeft: '1px solid #eee', paddingLeft: '24px' }}>
+                        <p style={{ margin: 0, fontSize: '12px', color: COLORS.text.secondary }}>Procesos en Gestión</p>
+                        <p style={{ margin: 0, fontSize: '20px', fontWeight: 'bold', color: COLORS.primary }}>
+                            {totalProcesses}
+                        </p>
+                    </div>
+                    <div style={{ textAlign: 'right', borderLeft: '1px solid #eee', paddingLeft: '24px' }}>
+                        <p style={{ margin: 0, fontSize: '12px', color: COLORS.text.secondary }}>Lotes o Bienes</p>
+                        <p style={{ margin: 0, fontSize: '20px', fontWeight: 'bold', color: COLORS.success }}>
+                            {trackedProcesses.reduce((acc, p) => acc + p.items.length, 0)}
+                        </p>
+                    </div>
+                </div>
+
                 {/* Export Buttons */}
                 <div style={{ display: 'flex', gap: '10px' }}>
                     <button
@@ -362,75 +428,113 @@ const ValuationTracking = ({ data }) => {
                             fontSize: '13px'
                         }}>
                         <Download size={16} />
-                        Exportar Reporte
                     </button>
                 </div>
+            </div>
 
-                {/* Filters */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', background: '#F8F9FA', padding: '8px 16px', borderRadius: '8px', border: '1px solid #eee' }}>
+            {/* Content Area */}
+            <div style={{ padding: '24px', maxWidth: '1400px', margin: '0 auto', fontFamily: 'system-ui, -apple-system, sans-serif', width: '100%', boxSizing: 'border-box' }}>
+                
+                {/* Advanced Filters Card */}
+                <div className="no-print" style={{ background: COLORS.background.card, padding: '20px', borderRadius: '12px', border: '1px solid #eee', marginBottom: '24px', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                        <h3 style={{ margin: 0, fontSize: '15px', color: COLORS.text.primary, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={COLORS.primary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+                            Filtros del Tablero
+                        </h3>
+                        {/* Clear Filters Button */}
+                        <button
+                            onClick={() => {
+                                setSelectedCompanies([]);
+                                setSelectedEstadoTecnico([]);
+                                setSelectedCategories([]);
+                                setSelectedSubcategories([]);
+                                setDateRange({ start: '', end: '' });
+                            }}
+                            style={{
+                                padding: '6px 14px',
+                                background: '#f5f5f5',
+                                border: '1px solid #e0e0e0',
+                                borderRadius: '6px',
+                                color: COLORS.text.secondary,
+                                fontSize: '13px',
+                                fontWeight: '600',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                transition: 'all 0.2s ease'
+                            }}
+                            onMouseOver={(e) => e.currentTarget.style.background = '#ebebeb'}
+                            onMouseOut={(e) => e.currentTarget.style.background = '#f5f5f5'}
+                        >
+                            <X size={14} />
+                            Limpiar Filtros
+                        </button>
+                    </div>
 
-                    {/* MultiSelect Company Filter */}
-                    <MultiSelectFilter
-                        label="Filtrar Empresa"
-                        options={companyOptions}
-                        selectedValues={selectedCompanies}
-                        onChange={setSelectedCompanies}
-                    />
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px', alignItems: 'flex-end' }}>
+                        {/* Rango Fecha Envío */}
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <span style={{ fontSize: '12px', fontWeight: '600', color: COLORS.text.secondary, marginBottom: '6px' }}>Rango Fecha Envío</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <input
+                                    type="date"
+                                    style={{ border: '1px solid #ddd', borderRadius: '4px', padding: '6px 8px', fontSize: '12px', outline: 'none', flex: 1, color: COLORS.text.primary }}
+                                    value={dateRange.start}
+                                    onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+                                />
+                                <span style={{ color: '#aaa', fontSize: '12px' }}>—</span>
+                                <input
+                                    type="date"
+                                    style={{ border: '1px solid #ddd', borderRadius: '4px', padding: '6px 8px', fontSize: '12px', outline: 'none', flex: 1, color: COLORS.text.primary }}
+                                    value={dateRange.end}
+                                    onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+                                />
+                            </div>
+                        </div>
 
-                    <div style={{ height: '30px', width: '1px', background: '#ddd' }}></div>
-
-                    {/* MultiSelect Estado Técnico Filter */}
-                    <MultiSelectFilter
-                        label="Estado Técnico"
-                        options={estadoTecnicoOptions}
-                        selectedValues={selectedEstadoTecnico}
-                        onChange={setSelectedEstadoTecnico}
-                    />
-
-                    <div style={{ height: '30px', width: '1px', background: '#ddd' }}></div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ fontSize: '12px', fontWeight: 'bold', color: COLORS.text.secondary, marginBottom: '4px' }}>Rango Fecha Envío:</span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <input
-                                type="date"
-                                style={{ border: '1px solid #ddd', borderRadius: '4px', padding: '4px 8px', fontSize: '12px', outline: 'none' }}
-                                value={dateRange.start}
-                                onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+                        {/* MultiSelect Company Filter */}
+                        <div style={{ flex: 1 }}>
+                            <MultiSelectFilter
+                                label="Empresa"
+                                options={companyOptions}
+                                selectedValues={selectedCompanies}
+                                onChange={setSelectedCompanies}
                             />
-                            <span style={{ color: '#ccc' }}>—</span>
-                            <input
-                                type="date"
-                                style={{ border: '1px solid #ddd', borderRadius: '4px', padding: '4px 8px', fontSize: '12px', outline: 'none' }}
-                                value={dateRange.end}
-                                onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+                        </div>
+
+                        {/* MultiSelect Estado Técnico Filter */}
+                        <div style={{ flex: 1 }}>
+                            <MultiSelectFilter
+                                label="Estado Técnico"
+                                options={estadoTecnicoOptions}
+                                selectedValues={selectedEstadoTecnico}
+                                onChange={setSelectedEstadoTecnico}
+                            />
+                        </div>
+                        
+                        {/* MultiSelect Category Filter */}
+                        <div style={{ flex: 1 }}>
+                            <MultiSelectFilter
+                                label="Categoría"
+                                options={categoryOptions}
+                                selectedValues={selectedCategories}
+                                onChange={setSelectedCategories}
+                            />
+                        </div>
+
+                        {/* MultiSelect Subcategory Filter */}
+                        <div style={{ flex: 1 }}>
+                            <MultiSelectFilter
+                                label="Subcategoría"
+                                options={subcategoryOptions}
+                                selectedValues={selectedSubcategories}
+                                onChange={setSelectedSubcategories}
                             />
                         </div>
                     </div>
                 </div>
-
-                {/* Summary Metrics */}
-                <div style={{ display: 'flex', gap: '24px' }}>
-                    <div style={{ textAlign: 'right' }}>
-                        <p style={{ margin: 0, fontSize: '12px', color: COLORS.text.secondary }}>Total Pendiente</p>
-                        <p style={{ margin: 0, fontSize: '20px', fontWeight: 'bold', color: COLORS.accent }}>
-                            $ {new Intl.NumberFormat('es-CO', { notation: "compact", compactDisplay: "short" }).format(totalPendingValue)}
-                        </p>
-                    </div>
-                    <div style={{ textAlign: 'right', borderLeft: '1px solid #eee', paddingLeft: '24px' }}>
-                        <p style={{ margin: 0, fontSize: '12px', color: COLORS.text.secondary }}>Procesos en Gestión</p>
-                        <p style={{ margin: 0, fontSize: '20px', fontWeight: 'bold', color: COLORS.primary }}>
-                            {totalProcesses}
-                        </p>
-                    </div>
-                    <div style={{ textAlign: 'right', borderLeft: '1px solid #eee', paddingLeft: '24px' }}>
-                        <p style={{ margin: 0, fontSize: '12px', color: COLORS.text.secondary }}>Lotes o Bienes</p>
-                        <p style={{ margin: 0, fontSize: '20px', fontWeight: 'bold', color: COLORS.success }}>
-                            {trackedProcesses.reduce((acc, p) => acc + p.items.length, 0)}
-                        </p>
-                    </div>
-                </div>
-            </div>
 
             {/* Charts Section */}
             {trackedProcesses.length > 0 ? (
@@ -718,6 +822,7 @@ const ValuationTracking = ({ data }) => {
                     </div>
                 )}
             </div>
+            </div>
 
             {/* Print Footer / Signature (Hidden on Screen) */}
             <div className="print-only" style={{
@@ -742,7 +847,7 @@ const ValuationTracking = ({ data }) => {
                     </div>
                 </div>
             </div>
-        </div >
+        </div>
     );
 };
 
